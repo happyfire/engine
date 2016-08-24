@@ -36,12 +36,12 @@ var _isMusicPlaying = false;
  * !#zh 包含游戏主体信息并负责驱动游戏的游戏对象。
  * @class Game
  */
-var game = /** @lends cc.game# */{
+var game = {
 
     /**
      * Event triggered when game hide to background.
      * Please note that this event is not 100% guaranteed to be fired.
-     * @property
+     * @property EVENT_HIDE
      * @type {String}
      * @example
      * cc.game.on(cc.game.EVENT_HIDE, function () {
@@ -54,21 +54,21 @@ var game = /** @lends cc.game# */{
     /**
      * Event triggered when game back to foreground
      * Please note that this event is not 100% guaranteed to be fired.
-     * @property
+     * @property EVENT_SHOW
      * @type {String}
      */
     EVENT_SHOW: "game_on_show",
 
     /**
      * Event triggered after game inited, at this point all engine objects and game scripts are loaded
-     * @property
+     * @property EVENT_GAME_INITED
      * @type {String}
      */
     EVENT_GAME_INITED: "game_inited",
 
     /**
      * Event triggered after renderer inited, at this point you will be able to use the render context
-     * @property
+     * @property EVENT_RENDERER_INITED
      * @type {String}
      */
     EVENT_RENDERER_INITED: "renderer_inited",
@@ -82,7 +82,7 @@ var game = /** @lends cc.game# */{
 
     /**
      * Key of config
-     * @property
+     * @property CONFIG_KEY
      * @type {Object}
      */
     CONFIG_KEY: {
@@ -258,11 +258,6 @@ var game = /** @lends cc.game# */{
             cc.audioEngine.stopAllEffects();
             cc.audioEngine.pauseMusic();
         }
-        // Pause event
-        var scene = cc.director.getScene() || cc.director.getRunningScene();
-        if (scene) {
-            cc.eventManager.pauseTarget(scene, true);
-        }
         // Pause main loop
         if (this._intervalId)
             window.cancelAnimationFrame(this._intervalId);
@@ -281,11 +276,6 @@ var game = /** @lends cc.game# */{
         // Resume audio engine
         if (cc.audioEngine && _isMusicPlaying) {
             cc.audioEngine.resumeMusic();
-        }
-        // Resume event
-        var scene = cc.director.getScene() || cc.director.getRunningScene();
-        if (scene) {
-            cc.eventManager.resumeTarget(scene, true);
         }
         // Resume main loop
         this._runMainLoop();
@@ -634,7 +624,7 @@ var game = /** @lends cc.game# */{
         modules && (config[CONFIG_KEY.modules] = modules);
 
         // Scene parser
-        this._sceneInfos = this._sceneInfos.concat(config[CONFIG_KEY.scenes]);
+        this._sceneInfos = config[CONFIG_KEY.scenes] || [];
 
         // Collide Map and Group List
         this.collisionMatrix = config.collisionMatrix || [];
@@ -707,6 +697,7 @@ var game = /** @lends cc.game# */{
         } else {
             cc._renderType = game.RENDER_TYPE_CANVAS;
             cc.renderer = cc.rendererCanvas;
+            cc.renderer.init();
             this._renderContext = cc._renderContext = new cc.CanvasContextWrapper(localCanvas.getContext("2d"));
             cc._drawingUtil = cc.DrawingPrimitiveCanvas ? new cc.DrawingPrimitiveCanvas(this._renderContext) : null;
         }

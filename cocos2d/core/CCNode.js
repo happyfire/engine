@@ -140,7 +140,7 @@ var _mouseEvents = [
     EventType.MOUSE_WHEEL,
 ];
 
-var currentHovered = null;
+var _currentHovered = null;
 
 var _touchStartHandler = function (touch, event) {
     var pos = touch.getLocation();
@@ -194,12 +194,12 @@ var _mouseMoveHandler = function (event) {
         event.stopPropagation();
         if (!this._previousIn) {
             // Fix issue when hover node switched, previous hovered node won't get MOUSE_LEAVE notification
-            if (currentHovered) {
+            if (_currentHovered) {
                 event.type = EventType.MOUSE_LEAVE;
-                currentHovered.owner.dispatchEvent(event);
-                currentHovered._previousIn = false;
+                _currentHovered.dispatchEvent(event);
+                _currentHovered._mouseListener._previousIn = false;
             }
-            currentHovered = this;
+            _currentHovered = this.owner;
             event.type = EventType.MOUSE_ENTER;
             node.dispatchEvent(event);
             this._previousIn = true;
@@ -211,7 +211,7 @@ var _mouseMoveHandler = function (event) {
         event.type = EventType.MOUSE_LEAVE;
         node.dispatchEvent(event);
         this._previousIn = false;
-        currentHovered = null;
+        _currentHovered = null;
     }
 };
 var _mouseUpHandler = function (event) {
@@ -526,6 +526,11 @@ var Node = cc.Class({
         // Actions
         this.stopAllActions();
         this._releaseAllActions();
+
+        // Remove Node.currentHovered
+        if (_currentHovered === this) {
+            _currentHovered = null;
+        }
 
         // Remove all listeners
         if (CC_JSB && this._touchListener) {
@@ -964,6 +969,12 @@ var Node = cc.Class({
             // activate
             cc.director.getActionManager().resumeTarget(this);
             cc.eventManager.resumeTarget(this);
+            if (this._touchListener) {
+                this._touchListener.mask = _searchMaskParent(this);
+            }
+            if (this._mouseListener) {
+                this._mouseListener.mask = _searchMaskParent(this);
+            }
         }
         else {
             // deactivate
@@ -1092,6 +1103,7 @@ var Node = cc.Class({
      * node.on(cc.Node.EventType.TOUCH_CANCEL, callback, this.node);
      */
     on: function (type, callback, target, useCapture) {
+        var newAdded = false;
         if (_touchEvents.indexOf(type) !== -1) {
             if (!this._touchListener) {
                 this._touchListener = cc.EventListener.create({
@@ -1107,6 +1119,7 @@ var Node = cc.Class({
                     this._touchListener.retain();
                 }
                 cc.eventManager.addListener(this._touchListener, this);
+                newAdded = true;
             }
         }
         else if (_mouseEvents.indexOf(type) !== -1) {
@@ -1125,8 +1138,17 @@ var Node = cc.Class({
                     this._mouseListener.retain();
                 }
                 cc.eventManager.addListener(this._mouseListener, this);
+                newAdded = true;
             }
         }
+        if (newAdded && !this._activeInHierarchy) {
+            cc.director.getScheduler().schedule(function() {
+                if (this._activeInHierarchy) {
+                    cc.eventManager.pauseTarget(this);
+                }
+            }, this, 0, 0, 0, false);
+        }
+
         this._EventTargetOn(type, callback, target, useCapture);
     },
 
@@ -1192,6 +1214,10 @@ var Node = cc.Class({
                 if (this._bubblingListeners.has(_mouseEvents[i])) {
                     return;
                 }
+            }
+
+            if (_currentHovered === this) {
+                _currentHovered = null;
             }
 
             cc.eventManager.removeListener(this._mouseListener);
@@ -1264,17 +1290,22 @@ var Node = cc.Class({
     /**
      * !#en
      * Executes an action, and returns the action that is executed.<br/>
-     * The node becomes the action's target. Refer to cc.Action's getTarget()<br/>
-     * Calling runAction while the node is not active won't have any effect.
+     * The node becomes the action's target. Refer to cc.Action's getTarget() <br/>
+     * Calling runAction while the node is not active won't have any effect. <br/>
+     * Note：You shouldn't modify the action after runAction, that won't take any effect.<br/>
+     * if you want to modify, when you define action plus.
      * !#zh
      * 执行并返回该执行的动作。该节点将会变成动作的目标。<br/>
-     * 调用 runAction 时，节点自身处于不激活状态将不会有任何效果。
+     * 调用 runAction 时，节点自身处于不激活状态将不会有任何效果。<br/>
+     * 注意：你不应该修改 runAction 后的动作，将无法发挥作用，如果想进行修改，请在定义 action 时加入。
      * @method runAction
      * @param {Action} action
      * @return {Action} An Action pointer
      * @example
      * var action = cc.scaleTo(0.2, 1, 0.6);
      * node.runAction(action);
+     * node.runAction(action).repeatForever(); // fail
+     * node.runAction(action.repeatForever()); // right
      */
     runAction: function (action) {
         if (!this.active)

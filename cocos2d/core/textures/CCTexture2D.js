@@ -96,7 +96,6 @@ var Texture2D = cc.Class(/** @lends cc.Texture2D# */{
             this._isGray = false;
         }
         else if (cc._renderType === game.RENDER_TYPE_WEBGL) {
-            this._hasPremultipliedAlpha = false;
             this._pixelFormat = Texture2D.defaultPixelFormat;
             this._hasPremultipliedAlpha = false;
             this._hasMipmaps = false;
@@ -863,6 +862,13 @@ game.once(game.EVENT_RENDERER_INITED, function () {
                 self._hasPremultipliedAlpha = premultiplied;
                 self._hasMipmaps = false;
                 self._textureLoaded = true;
+
+                if (cc.view._antiAliasEnabled) {
+                    self.setAntiAliasTexParameters();
+                }
+                else {
+                    self.setAliasTexParameters();
+                }
 
                 //dispatch load event to listener.
                 self.emit("load");
