@@ -1141,14 +1141,13 @@ var Node = cc.Class({
                 newAdded = true;
             }
         }
-        // if (newAdded && !this._activeInHierarchy) {
-        //     cc.director.getScheduler().schedule(function() {
-        //         if (this._activeInHierarchy) {
-        //             cc.eventManager.pauseTarget(this);
-        //         }
-        //     }, this, 0, 0, 0, false);
-        // }
-        ///上面这段代码会导致隐藏的node无法绑定事件,先去掉
+        if (newAdded && !this._activeInHierarchy) {
+            cc.director.getScheduler().schedule(function() {
+                if (!this._activeInHierarchy) {
+                    cc.eventManager.pauseTarget(this);
+                }
+            }, this, 0, 0, 0, false);
+        }
 
         this._EventTargetOn(type, callback, target, useCapture);
     },
