@@ -89,7 +89,6 @@ cc.Scheduler.prototype.unschedule = function (callback, target) {
 
 // Node
 var nodeProto = cc.Node.prototype;
-cc.defineGetterSetter(nodeProto, "arrivalOrder", nodeProto.getOrderOfArrival, nodeProto.setOrderOfArrival);
 cc.defineGetterSetter(nodeProto, "_parent", nodeProto.getParent, nodeProto.setParent);
 
 // TextureCache addImage
@@ -198,6 +197,14 @@ if (window.SocketIO) {
     window.io = window.SocketIO;
 }
 
+SocketIO.prototype._jsbEmit = SocketIO.prototype.emit;
+SocketIO.prototype.emit = function (uri, delegate) {
+    if (typeof delegate === 'object') {
+        delegate = JSON.stringify(delegate);
+    }
+    this._jsbEmit(uri, delegate);
+};
+
 // ccsg
 window._ccsg = {
     Node: cc.Node,
@@ -226,4 +233,8 @@ cc.formatStr = cc.js.formatStr;
 // disabled premultiplied alpha for png
 if (cc.Image && cc.Image.setPNGPremultipliedAlphaEnabled) {
     cc.Image.setPNGPremultipliedAlphaEnabled(false);
+}
+
+if (cc.audioEngine) {
+    cc.audioEngine.setMaxWebAudioSize = function () {};
 }
